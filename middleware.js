@@ -1,25 +1,28 @@
 import { sha256 } from './js/sha256.js';
 
-// Vercel / Cloudflare Middleware
+// Cloudflare Pages / Vercel Middleware
 export default async function middleware(request) {
   const url = new URL(request.url);
 
   // 只處理 HTML 頁面
-  const isHtmlPage = url.pathname.endsWith('.html') || url.pathname.endsWith('/') || url.pathname === '';
+  const isHtmlPage = url.pathname.endsWith('.html') || 
+                     url.pathname.endsWith('/') || 
+                     url.pathname === '';
+  
   if (!isHtmlPage) {
-    return; // 讓其他請求正常通過
+    return;
   }
 
-  // === 這裡直接寫死密碼（最穩定）===
-  const password = "@10101";        // ←←← 改成你想要的密碼！！！
-  // 如果之後想用環境變數，再改回 process.env.PASSWORD
+  // ================== 在這裡設定你的密碼 ==================
+  const password = "123456";   // ←←← 改成你想要的密碼！！！
+  // ======================================================
 
   let passwordHash = '';
   if (password) {
     passwordHash = await sha256(password);
   }
 
-  // 獲取原始回應
+  // 取得原始回應
   const response = await fetch(request);
   const contentType = response.headers.get('content-type') || '';
 
@@ -29,9 +32,9 @@ export default async function middleware(request) {
 
   let originalHtml = await response.text();
 
-  // 替換前端的密碼檢查變數
+  // 替換密碼
   let modifiedHtml = originalHtml.replace(
-    /window\.__ENV__\.PASSWORD\s*=\s*".*?"/,
+    /window\.__ENV__\.PASSWORD\s*=\s*".*?"/g,
     `window.__ENV__.PASSWORD = "${passwordHash}"`
   );
 
