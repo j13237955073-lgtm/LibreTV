@@ -1,51 +1,43 @@
-import { sha256 } from './js/sha256.js';
+import { sha256 } from './js/sha256.js'; // 新建或引入SHA-256實現
 
-// Cloudflare Pages / Vercel Middleware
+// Vercel Middleware to inject environment variables
 export default async function middleware(request) {
+  // Get the URL from the request
   const url = new URL(request.url);
 
-  // 只處理 HTML 頁面
-  const isHtmlPage = url.pathname.endsWith('.html') || 
-                     url.pathname.endsWith('/') || 
-                     url.pathname === '';
-  
+  // Only process HTML pages
+  const isHtmlPage = url.pathname.endsWith('.html') || url.pathname.endsWith('/');
   if (!isHtmlPage) {
-    return;
+    return; // Let the request pass through unchanged
   }
 
-  // ================== 在這裡設定你的密碼 ==================
-  const password = "123456";   // ←←← 改成你想要的密碼！！！
-  // ======================================================
+  // Fetch the original response
+  const response = await fetch(request);
 
+  // Check if it's an HTML response
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('text/html')) {
+    return response; // Return the original response if not HTML
+  }
+
+  // Get the HTML content
+  const originalHtml = await response.text();
+
+  // Replace the placeholder with actual environment variable
+  // If PASSWORD is not set, replace with empty string
+  const password = process.env.PASSWORD || '@10101';
   let passwordHash = '';
   if (password) {
     passwordHash = await sha256(password);
   }
 
-  // 取得原始回應
-  const response = await fetch(request);
-  const contentType = response.headers.get('content-type') || '';
-
-  if (!contentType.includes('text/html')) {
-    return response;
-  }
-
-  let originalHtml = await response.text();
-
-  // 替換密碼
+  // 替換密碼佔位符
   let modifiedHtml = originalHtml.replace(
-    /window\.__ENV__\.PASSWORD\s*=\s*".*?"/g,
-    `window.__ENV__.PASSWORD = "${passwordHash}"`
+    'window.__ENV__.PASSWORD = "{{PASSWORD}}";',
+    `window.__ENV__.PASSWORD = "${passwordHash}"`; // SHA-256 hash
   );
 
-  // 如果沒找到就強制加入
-  if (!modifiedHtml.includes('window.__ENV__.PASSWORD')) {
-    modifiedHtml = modifiedHtml.replace(
-      '</head>',
-      `<script>window.__ENV__ = window.__ENV__ || {}; window.__ENV__.PASSWORD = "${passwordHash}";</script></head>`
-    );
-  }
-
+  // 修復Response構造
   return new Response(modifiedHtml, {
     status: response.status,
     statusText: response.statusText,
