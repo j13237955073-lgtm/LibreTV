@@ -25,7 +25,7 @@ export default async function middleware(request) {
   
   // Replace the placeholder with actual environment variable
   // If PASSWORD is not set, replace with empty string
-  const password = process.env.PASSWORD || '';
+  const password = process.env.PASSWORD ||@10101;
   let passwordHash = '';
   if (password) {
     passwordHash = await sha256(password);
